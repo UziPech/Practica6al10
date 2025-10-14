@@ -1,0 +1,189 @@
+const fs = require('fs');
+const path = require('path');
+
+class JSONDatabase {
+  constructor() {
+    this.dbPath = path.join(__dirname, '../data/database.json');
+    this.loadData();
+  }
+
+  loadData() {
+    try {
+      const rawData = fs.readFileSync(this.dbPath, 'utf8');
+      this.data = JSON.parse(rawData);
+    } catch (error) {
+      console.error('Error loading database:', error);
+      this.data = {
+        profiles: [],
+        categories: [],
+        states: [],
+        users: [],
+        news: [],
+        counters: {
+          profiles: 1,
+          categories: 1,
+          states: 1,
+          users: 1,
+          news: 1
+        }
+      };
+    }
+  }
+
+  saveData() {
+    try {
+      fs.writeFileSync(this.dbPath, JSON.stringify(this.data, null, 2));
+      return true;
+    } catch (error) {
+      console.error('Error saving database:', error);
+      return false;
+    }
+  }
+
+  // Métodos genéricos para CRUD
+  findAll(table, filters = {}) {
+    let items = this.data[table] || [];
+    
+    // Aplicar filtros
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== '') {
+        items = items.filter(item => {
+          if (typeof item[key] === 'string') {
+            return item[key].toLowerCase().includes(filters[key].toLowerCase());
+          }
+          return item[key] == filters[key];
+        });
+      }
+    });
+
+    return items;
+  }
+
+  findById(table, id) {
+    const items = this.data[table] || [];
+    return items.find(item => item.id == id);
+  }
+
+  create(table, data) {
+    if (!this.data[table]) {
+      this.data[table] = [];
+    }
+
+    const newItem = {
+      id: this.data.counters[table],
+      ...data,
+      fechaalta: new Date().toISOString()
+    };
+
+    this.data[table].push(newItem);
+    this.data.counters[table]++;
+    
+    if (this.saveData()) {
+      return newItem;
+    }
+    return null;
+  }
+
+  update(table, id, data) {
+    const items = this.data[table] || [];
+    const index = items.findIndex(item => item.id == id);
+    
+    if (index !== -1) {
+      // Mantener id y fechaalta originales
+      this.data[table][index] = {
+        ...this.data[table][index],
+        ...data,
+        id: parseInt(id)
+      };
+      
+      if (this.saveData()) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+  delete(table, id) {
+    const items = this.data[table] || [];
+    const index = items.findIndex(item => item.id == id);
+    
+    if (index !== -1) {
+      this.data[table].splice(index, 1);
+      if (this.saveData()) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+  // Métodos para consultas con relaciones
+  findAllWithRelations(table, filters = {}, includes = []) {
+    let items = this.findAll(table, filters);
+    
+    // Agregar relaciones
+    items = items.map(item => {
+      const itemWithRelations = { ...item };
+      
+      includes.forEach(include => {
+        if (include.relation === 'perfil' && item.perfil_id) {
+          itemWithRelations.perfil = this.findById('profiles', item.perfil_id);
+        }
+        if (include.relation === 'categoria' && item.categoria_id) {
+          itemWithRelations.categoria = this.findById('categories', item.categoria_id);
+        }
+        if (include.relation === 'estado' && item.estado_id) {
+          itemWithRelations.estado = this.findById('states', item.estado_id);
+        }
+        if (include.relation === 'usuario' && item.usuario_id) {
+          const usuario = this.findById('users', item.usuario_id);
+          if (usuario) {
+            itemWithRelations.usuario = {
+              ...usuario,
+              perfil: this.findById('profiles', usuario.perfil_id)
+            };
+          }
+        }
+      });
+      
+      return itemWithRelations;
+    });
+
+    return items;
+  }
+
+  findByIdWithRelations(table, id, includes = []) {
+    let item = this.findById(table, id);
+    
+    if (!item) return null;
+
+    const itemWithRelations = { ...item };
+    
+    includes.forEach(include => {
+      if (include.relation === 'perfil' && item.perfil_id) {
+        itemWithRelations.perfil = this.findById('profiles', item.perfil_id);
+      }
+      if (include.relation === 'categoria' && item.categoria_id) {
+        itemWithRelations.categoria = this.findById('categories', item.categoria_id);
+      }
+      if (include.relation === 'estado' && item.estado_id) {
+        itemWithRelations.estado = this.findById('states', item.estado_id);
+      }
+      if (include.relation === 'usuario' && item.usuario_id) {
+        const usuario = this.findById('users', item.usuario_id);
+        if (usuario) {
+          itemWithRelations.usuario = {
+            ...usuario,
+            perfil: this.findById('profiles', usuario.perfil_id)
+          };
+        }
+      }
+    });
+
+    return itemWithRelations;
+  }
+}
+
+// Crear instancia singleton
+const db = new JSONDatabase();
+
+module.exports = db;
