@@ -4,15 +4,19 @@ const path = require('path');
 class JSONDatabase {
   constructor() {
     this.dbPath = path.join(__dirname, '../data/database.json');
-    this.loadData();
+    this.data = null; // lazy loaded
+    this._loaded = false;
   }
 
-  loadData() {
+  // Cargar datos solo cuando sea necesario (evita I/O en import)
+  _ensureLoaded() {
+    if (this._loaded) return;
     try {
       const rawData = fs.readFileSync(this.dbPath, 'utf8');
       this.data = JSON.parse(rawData);
+      this._loaded = true;
     } catch (error) {
-      console.error('Error loading database:', error);
+      console.warn('Warning: could not load database file, using in-memory fallback. Error:', error.message || error);
       this.data = {
         profiles: [],
         categories: [],
@@ -27,10 +31,19 @@ class JSONDatabase {
           news: 1
         }
       };
+      this._loaded = true;
     }
   }
 
   saveData() {
+    // En entornos serverless (Vercel) el filesystem es efímero; evitar fallos silenciosos
+    const runningOnVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+    const disableFileDb = process.env.DISABLE_FILE_DB === '1' || process.env.DISABLE_FILE_DB === 'true';
+    if (runningOnVercel || disableFileDb) {
+      console.warn('Skipping saveData() because running on serverless environment or DISABLE_FILE_DB=true');
+      return true;
+    }
+
     try {
       fs.writeFileSync(this.dbPath, JSON.stringify(this.data, null, 2));
       return true;
@@ -42,6 +55,7 @@ class JSONDatabase {
 
   // Métodos genéricos para CRUD
   findAll(table, filters = {}) {
+    this._ensureLoaded();
     let items = this.data[table] || [];
     
     // Aplicar filtros
@@ -60,11 +74,13 @@ class JSONDatabase {
   }
 
   findById(table, id) {
+    this._ensureLoaded();
     const items = this.data[table] || [];
     return items.find(item => item.id == id);
   }
 
   create(table, data) {
+    this._ensureLoaded();
     if (!this.data[table]) {
       this.data[table] = [];
     }
@@ -77,14 +93,16 @@ class JSONDatabase {
 
     this.data[table].push(newItem);
     this.data.counters[table]++;
-    
+
     if (this.saveData()) {
       return newItem;
     }
-    return null;
+    // Si no se pudo guardar, devolvemos objeto creado en memoria
+    return newItem;
   }
 
   update(table, id, data) {
+    this._ensureLoaded();
     const items = this.data[table] || [];
     const index = items.findIndex(item => item.id == id);
     
@@ -96,28 +114,28 @@ class JSONDatabase {
         id: parseInt(id)
       };
       
-      if (this.saveData()) {
-        return 1;
-      }
+      this.saveData();
+      return 1;
     }
     return 0;
   }
 
   delete(table, id) {
+    this._ensureLoaded();
     const items = this.data[table] || [];
     const index = items.findIndex(item => item.id == id);
     
     if (index !== -1) {
       this.data[table].splice(index, 1);
-      if (this.saveData()) {
-        return 1;
-      }
+      this.saveData();
+      return 1;
     }
     return 0;
   }
 
   // Métodos para consultas con relaciones
   findAllWithRelations(table, filters = {}, includes = []) {
+    this._ensureLoaded();
     let items = this.findAll(table, filters);
     
     // Agregar relaciones
@@ -152,6 +170,7 @@ class JSONDatabase {
   }
 
   findByIdWithRelations(table, id, includes = []) {
+    this._ensureLoaded();
     let item = this.findById(table, id);
     
     if (!item) return null;
