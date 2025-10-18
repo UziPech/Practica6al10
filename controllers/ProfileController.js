@@ -1,5 +1,7 @@
 const db = require('../services/JSONDatabase');
 
+const { validationResult } = require('express-validator');
+
 const get = (request, response) => {
   try {
     const { nombre } = request.query;
@@ -32,6 +34,11 @@ const getById = (request, response) => {
 
 const create = (request, response) => {
   try {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.mapped() });
+    }
+
     const newProfile = db.create('profiles', request.body);
     
     if (newProfile) {
@@ -46,6 +53,11 @@ const create = (request, response) => {
 
 const update = (request, response) => {
   try {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.mapped() });
+    }
+
     const id = request.params.id;
     const rowsUpdated = db.update('profiles', id, request.body);
     

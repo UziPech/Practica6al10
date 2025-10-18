@@ -1,6 +1,8 @@
 var express = require('express');
 
 const { get, getById, create, update, destroy } = require('../controllers/CategoryController');
+const { validatorCategoryCreate, validatorCategoryUpdate } = require('../validators/CategoryValidator');
+const { authenticateAdmin } = require('../middlewares/jwt');
 const api = express.Router();
 
 /**
@@ -119,7 +121,7 @@ api.get('/categorias/:id', getById)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.post('/categorias', create)
+api.post('/categorias', validatorCategoryCreate, authenticateAdmin, create)
 
 /**
  * @swagger
@@ -160,7 +162,7 @@ api.post('/categorias', create)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.put('/categorias/:id', update)
+api.put('/categorias/:id', validatorCategoryUpdate, authenticateAdmin, update)
 
 /**
  * @swagger
@@ -191,6 +193,6 @@ api.put('/categorias/:id', update)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.delete('/categorias/:id', destroy)
+api.delete('/categorias/:id', authenticateAdmin, destroy)
 
 module.exports = api;

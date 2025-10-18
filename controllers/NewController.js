@@ -3,6 +3,7 @@ const { Category } = require('../models/CategoryModel')
 const { State } = require('../models/StateModel')
 const { User } = require('../models/UserModel')
 const { Profile } = require('../models/ProfileModel')
+const db = require('../services/JSONDatabase')
 
 const relationsUser = [
     { model: Profile, attributes: ['id', 'nombre'], as: 'perfil' }
@@ -13,6 +14,8 @@ const relations = [
     { model: State, attributes: ['id', 'nombre', 'abreviacion'], as: 'estado' },
     { model: User, attributes: ['id', 'perfil_id', 'nick', 'nombre'], as: 'usuario', include: relationsUser }
 ]
+
+const { validationResult } = require('express-validator');
 
 const get = (request, response) => {
     const { titulo, activo } = request.query
@@ -34,8 +37,14 @@ const get = (request, response) => {
             response.json(entities);
         })
         .catch(err => {
-            console.log(err)
-            response.status(500).send('Error consultando los datos');
+            console.warn('Sequelize error en New.findAll, usando JSON fallback:', err.message);
+            // Fallback: buscar en JSON DB y mapear relaciones mínimas
+            const items = db.findAllWithRelations('news', filters, [
+                { relation: 'categoria' },
+                { relation: 'estado' },
+                { relation: 'usuario' }
+            ]);
+            response.json(items);
         })
 }
 
@@ -53,23 +62,43 @@ const getById = (request, response) => {
             }
         })
         .catch(err => {
-            response.status(500).send('Error al consultar el dato');
+            console.warn('Sequelize error en New.findByPk, usando JSON fallback:', err.message);
+            const item = db.findByIdWithRelations('news', id, [
+                { relation: 'categoria' }, { relation: 'estado' }, { relation: 'usuario' }
+            ]);
+            if (item) response.json(item);
+            else response.status(404).send('Recurso no encontrado');
         })
 }
 
 const create = (request, response) => {
+        const errors = validationResult(request);
+        if (!errors.isEmpty()) {
+            const { formatValidationResult } = require('../utils/validation');
+            return response.status(422).json(formatValidationResult(errors));
+        }
+
     New.create(request.body).then(
         newEntitie => {
             response.status(201).json(newEntitie)
         }
     )
         .catch(err => {
-            response.status(500).send('Error al crear');
+            console.warn('Sequelize error en New.create, usando JSON fallback:', err.message);
+            const created = db.create('news', request.body);
+            if (created) response.status(201).json(created);
+            else response.status(500).send('Error al crear');
         })
 }
 
 const update = (request, response) => {
     const id = request.params.id;
+        const errors = validationResult(request);
+        if (!errors.isEmpty()) {
+            const { formatValidationResult } = require('../utils/validation');
+            return response.status(422).json(formatValidationResult(errors));
+        }
+
     New.update(
         request.body, {
             where: {
@@ -81,7 +110,10 @@ const update = (request, response) => {
             response.status(200).send(`${numRowsUpdated} registro actualizado`);
         })
         .catch(err => {
-            response.status(500).send('Error al actualizar');
+            console.warn('Sequelize error en New.update, usando JSON fallback:', err.message);
+            const updated = db.update('news', id, request.body);
+            if (updated) response.status(200).send(`1 registro actualizado`);
+            else response.status(500).send('Error al actualizar');
         });
 }
 
@@ -96,7 +128,10 @@ const destroy = (request, response) => {
             response.status(200).send(`${numRowsDeleted} registro eliminado`);
         })
         .catch(err => {
-            response.status(500).send('Error al eliminar');
+            console.warn('Sequelize error en New.destroy, usando JSON fallback:', err.message);
+            const deleted = db.delete('news', id);
+            if (deleted) response.status(200).send(`1 registro eliminado`);
+            else response.status(500).send('Error al eliminar');
         });
 }
 

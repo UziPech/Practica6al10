@@ -1,5 +1,6 @@
 const { State } = require('../models/StateModel')
 const { validationResult } = require('express-validator');
+const db = require('../services/JSONDatabase');
 
 const get = (request, response) => {
   const { nombre, abreviacion } = request.query
@@ -20,8 +21,10 @@ const get = (request, response) => {
       response.json(entities);
     })
     .catch(err => {
-        console.log(err)
-      response.status(500).send('Error consultando los datos');
+        console.warn('Sequelize error en State.findAll, usando JSON fallback:', err.message);
+        // Fallback: leer desde DB JSON
+        const items = db.findAll('states', filters);
+        response.json(items);
     })
 }
 
@@ -37,14 +40,18 @@ const getById = (request, response) => {
       }
     })
     .catch(err => {
-      response.status(500).send('Error al consultar el dato');
+      console.warn('Sequelize error en State.findByPk, usando JSON fallback:', err.message);
+      const item = db.findById('states', id);
+      if (item) response.json(item);
+      else response.status(404).send('Recurso no encontrado');
     })
 }
 
 const create = (request, response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
-    return response.status(422).json({ errors: errors.mapped() });
+    const { formatValidationResult } = require('../utils/validation');
+    return response.status(422).json(formatValidationResult(errors));
   }
   
   State.create(request.body).then(
@@ -53,14 +60,19 @@ const create = (request, response) => {
     }
   )
     .catch(err => {
-      response.status(500).send('Error al crear');
+      console.warn('Sequelize error en State.create, usando JSON fallback:', err.message);
+      // Fallback: crear en DB JSON
+      const created = db.create('states', request.body);
+      if (created) response.status(201).json(created);
+      else response.status(500).send('Error al crear (fallback)');
     })
 }
 
 const update = (request, response) => {
   const errors = validationResult(request);
   if (!errors.isEmpty()) {
-    return response.status(422).json({ errors: errors.mapped() });
+    const { formatValidationResult } = require('../utils/validation');
+    return response.status(422).json(formatValidationResult(errors));
   }
   
   const id = request.params.id;
@@ -75,7 +87,10 @@ const update = (request, response) => {
       response.status(200).send(`${numRowsUpdated} registro actualizado`);
     })
     .catch(err => {
-      response.status(500).send('Error al actualizar');
+      console.warn('Sequelize error en State.update, usando JSON fallback:', err.message);
+      const updated = db.update('states', id, request.body);
+      if (updated) response.status(200).send(`1 registro actualizado`);
+      else response.status(500).send('Error al actualizar (fallback)');
     });
 }
 
@@ -91,7 +106,10 @@ const destroy = (request, response) => {
     response.status(200).send(`${numRowsDeleted} registro eliminado`);
   })
     .catch(err => {
-      response.status(500).send('Error al eliminar');
+      console.warn('Sequelize error en State.destroy, usando JSON fallback:', err.message);
+      const deleted = db.delete('states', id);
+      if (deleted) response.status(200).send(`1 registro eliminado`);
+      else response.status(500).send('Error al eliminar (fallback)');
     });
 }
 

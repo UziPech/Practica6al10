@@ -1,9 +1,12 @@
 const { User } = require('../models/UserModel')
 const { Profile } = require('../models/ProfileModel')
+const db = require('../services/JSONDatabase');
 
 const relations = [
     { model: Profile, attributes: ['id', 'nombre'], as: 'perfil' }
 ]
+
+const { validationResult } = require('express-validator');
 
 const get = (request, response) => {
     const { nombre, apellidos, nick } = request.query
@@ -27,8 +30,9 @@ const get = (request, response) => {
             response.json(entities);
         })
         .catch(err => {
-            console.log(err)
-            response.status(500).send('Error consultando los datos');
+            console.warn('Sequelize error en User.findAll, usando JSON fallback:', err.message);
+            const items = db.findAllWithRelations('users', filters, [{ relation: 'perfil' }]);
+            response.json(items);
         })
 }
 
@@ -46,23 +50,52 @@ const getById = (request, response) => {
             }
         })
         .catch(err => {
-            response.status(500).send('Error al consultar el dato');
+            console.warn('Sequelize error en User.findByPk, usando JSON fallback:', err.message);
+            const item = db.findByIdWithRelations('users', id, [{ relation: 'perfil' }]);
+            if (item) response.json(item);
+            else response.status(404).send('Recurso no encontrado');
         })
 }
 
 const create = (request, response) => {
-    User.create(request.body).then(
-        newEntitie => {
-            response.status(201).json(newEntitie)
+        const errors = validationResult(request);
+        if (!errors.isEmpty()) {
+            const { formatValidationResult } = require('../utils/validation');
+            return response.status(422).json(formatValidationResult(errors));
         }
-    )
-        .catch(err => {
-            response.status(500).send('Error al crear');
-        })
+
+    // Hashear password si viene en el request
+    const createUser = async () => {
+        try {
+            // Defenderse contra body malicioso: eliminar id si se envía
+            if (request.body.id) {
+                delete request.body.id;
+            }
+            if (request.body.password) {
+                const bcrypt = require('bcryptjs');
+                request.body.password = await bcrypt.hash(request.body.password, 10);
+            }
+            const newEntitie = await User.create(request.body);
+            response.status(201).json(newEntitie);
+        } catch (err) {
+            console.warn('Sequelize error en User.create, intentando fallback JSON:', err.message);
+            const created = db.create('users', request.body);
+            if (created) response.status(201).json(created);
+            else response.status(500).send('Error al crear');
+        }
+    }
+
+    createUser();
 }
 
 const update = (request, response) => {
     const id = request.params.id;
+        const errors = validationResult(request);
+        if (!errors.isEmpty()) {
+            const { formatValidationResult } = require('../utils/validation');
+            return response.status(422).json(formatValidationResult(errors));
+        }
+
     User.update(
         request.body,
         {

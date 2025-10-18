@@ -1,5 +1,7 @@
 const db = require('../services/JSONDatabase');
 
+const { validationResult } = require('express-validator');
+
 const get = (request, response) => {
   try {
     const { nombre, descripcion, activo, useralta } = request.query;
@@ -35,6 +37,16 @@ const getById = (request, response) => {
   
 const create = (request, response) => {
   try {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.mapped() });
+    }
+
+    // Defensa: eliminar id si viene en el body y sanear strings
+    if (request.body.id) delete request.body.id;
+    if (request.body.nombre && typeof request.body.nombre === 'string') request.body.nombre = request.body.nombre.trim();
+    if (request.body.descripcion && typeof request.body.descripcion === 'string') request.body.descripcion = request.body.descripcion.trim();
+
     const newCategory = db.create('categories', request.body);
     
     if (newCategory) {
@@ -49,6 +61,11 @@ const create = (request, response) => {
   
 const update = (request, response) => {
   try {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      return response.status(422).json({ errors: errors.mapped() });
+    }
+
     const id = request.params.id;
     const rowsUpdated = db.update('categories', id, request.body);
     

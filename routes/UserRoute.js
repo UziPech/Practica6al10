@@ -1,6 +1,7 @@
 var express = require('express');
 
 const { get, getById, create, update, destroy } = require('../controllers/UserController');
+const { validatorUserCreate, validatorUserUpdate } = require('../validators/UserValidator');
 const api = express.Router();
 
 /**
@@ -117,7 +118,7 @@ api.get('/usuarios/:id', getById)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.post('/usuarios', create)
+api.post('/usuarios', validatorUserCreate, create)
 
 /**
  * @swagger
@@ -159,7 +160,7 @@ api.post('/usuarios', create)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.put('/usuarios/:id', update)
+api.put('/usuarios/:id', validatorUserUpdate, update)
 
 /**
  * @swagger

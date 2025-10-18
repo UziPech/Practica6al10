@@ -1,6 +1,7 @@
 var express = require('express');
 
 const { get, getById, create, update, destroy } = require('../controllers/ProfileController');
+const { validatorProfileCreate, validatorProfileUpdate } = require('../validators/ProfileValidator');
 const api = express.Router();
 
 /**
@@ -101,7 +102,7 @@ api.get('/perfiles/:id', getById)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.post('/perfiles', create)
+api.post('/perfiles', validatorProfileCreate, create)
 
 /**
  * @swagger
@@ -142,7 +143,7 @@ api.post('/perfiles', create)
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-api.put('/perfiles/:id', update)
+api.put('/perfiles/:id', validatorProfileUpdate, update)
 
 /**
  * @swagger

@@ -30,6 +30,14 @@
       "descripcion": "este es un testeo",
       "activo": true,
       "fechaalta": "2025-10-14T04:59:00.471Z"
+    },
+    {
+      "id": 5,
+      "nombre": "EscritorArtista",
+      "descripcion": "Perfil para gente creativa",
+      "activo": true,
+      "useralta": "admin",
+      "fechaalta": "2025-10-17T23:52:07.131Z"
     }
   ],
   "categories": [
@@ -56,6 +64,22 @@
       "activo": true,
       "fechaalta": "2024-01-15T13:00:00Z",
       "useralta": "admin"
+    },
+    {
+      "id": 4,
+      "nombre": "AmorLove",
+      "descripcion": "todo sobre amor",
+      "activo": true,
+      "useralta": "admin",
+      "fechaalta": "2025-10-17T23:26:16.382Z"
+    },
+    {
+      "id": 5,
+      "nombre": "Gore",
+      "descripcion": "Sangre",
+      "activo": true,
+      "useralta": "admin",
+      "fechaalta": "2025-10-17T23:58:19.498Z"
     }
   ],
   "states": [
@@ -82,6 +106,22 @@
       "activo": true,
       "fechaalta": "2024-01-15T14:30:00Z",
       "useralta": "admin"
+    },
+    {
+      "id": 4,
+      "useralta": "admin",
+      "nombre": "Tulum",
+      "abreviacion": "TUL",
+      "activo": true,
+      "fechaalta": "2025-10-17T23:43:48.263Z"
+    },
+    {
+      "id": 5,
+      "nombre": "Tulum",
+      "abreviacion": "TL",
+      "activo": true,
+      "useralta": "admin",
+      "fechaalta": "2025-10-17T23:50:39.713Z"
     }
   ],
   "users": [
@@ -92,7 +132,7 @@
       "nombre": "Juan",
       "apellidos": "Pérez García",
       "email": "juan.perez@admin.com",
-      "password": "admin123",
+      "password": "$2a$10$.ZB5IeCywpn2ioPiZurJtOskqZHVkQaalab/3b6oJk6pQzhXWhXKS",
       "activo": true,
       "fechaalta": "2024-01-15T15:00:00Z",
       "useralta": "system"
@@ -120,6 +160,18 @@
       "activo": true,
       "fechaalta": "2024-01-15T16:00:00Z",
       "useralta": "admin"
+    },
+    {
+      "id": 4,
+      "perfil_id": 3,
+      "nick": "mrodriguez",
+      "nombre": "María",
+      "apellidos": "Rodríguez López",
+      "email": "maria.rodriguez@email.com",
+      "password": "$2a$10$uTq1L8wyRdSniR0.KVE2ru9l6UHW973.cxPMy5l4lsJLis07lBrVC",
+      "activo": true,
+      "useralta": "admin",
+      "fechaalta": "2025-10-17T23:53:09.137Z"
     }
   ],
   "news": [
@@ -164,10 +216,10 @@
     }
   ],
   "counters": {
-    "profiles": 5,
-    "categories": 4,
-    "states": 4,
-    "users": 4,
+    "profiles": 6,
+    "categories": 6,
+    "states": 6,
+    "users": 5,
     "news": 4
   }
 }
